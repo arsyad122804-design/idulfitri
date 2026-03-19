@@ -1,0 +1,9 @@
+{
+  "name": "idul-fitri-1447",
+  "version": "1.0.0",
+  "description": "Landing Page Idul Fitri 1447 H",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve ."
+  }
+}
