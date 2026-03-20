@@ -401,8 +401,95 @@
     </div>
   </div>
 
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    // =============================================
+    // GANTI DENGAN CONFIG FIREBASE KAMU
+    const firebaseConfig = {
+      apiKey: "GANTI_API_KEY",
+      authDomain: "GANTI.firebaseapp.com",
+      databaseURL: "https://GANTI-default-rtdb.firebaseio.com",
+      projectId: "GANTI",
+      storageBucket: "GANTI.appspot.com",
+      messagingSenderId: "GANTI",
+      appId: "GANTI"
+    };
+
+    // GANTI DENGAN TOKEN & NOMOR WA KAMU (dari fonnte.com)
+    const FONNTE_TOKEN = "GANTI_TOKEN_FONNTE";
+    const WA_NUMBER   = "628xxxxxxxxxx"; // nomor WA kamu, format 628xxx
+    // =============================================
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getDatabase(app);
+    const commentsRef = ref(db, 'comments');
+
+    // Realtime listener — semua pengunjung langsung lihat komentar baru
+    onValue(commentsRef, (snapshot) => {
+      const list = document.getElementById('commentList');
+      const noComment = document.getElementById('noComment');
+      list.querySelectorAll('.comment-item').forEach(el => el.remove());
+
+      const data = snapshot.val();
+      if (!data) { noComment.style.display = 'block'; return; }
+      noComment.style.display = 'none';
+
+      // Urutkan terbaru di atas
+      const items = Object.values(data).sort((a, b) => b.ts - a.ts);
+      items.forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'comment-item';
+        div.innerHTML = `
+          <div>
+            <span class="c-name">${escHtml(c.name)}</span>
+            <span class="c-time">${escHtml(c.time)}</span>
+          </div>
+          <div class="c-text">${escHtml(c.text)}</div>
+        `;
+        list.appendChild(div);
+      });
+    });
+
+    // Submit komentar
+    window.submitComment = async function() {
+      const name = document.getElementById('inputName').value.trim();
+      const text = document.getElementById('inputComment').value.trim();
+      if (!name) { alert('Masukkan nama kamu dulu ya 😊'); return; }
+      if (!text) { alert('Tulis ucapan atau komentar dulu ya 🌙'); return; }
+
+      const time = new Date().toLocaleString('id-ID', {
+        day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'
+      });
+
+      // Simpan ke Firebase
+      await push(commentsRef, { name, text, time, ts: Date.now() });
+
+      document.getElementById('inputName').value = '';
+      document.getElementById('inputComment').value = '';
+
+      // Kirim notif WA via Fonnte
+      if (FONNTE_TOKEN !== 'GANTI_TOKEN_FONNTE') {
+        fetch('https://api.fonnte.com/send', {
+          method: 'POST',
+          headers: { 'Authorization': FONNTE_TOKEN },
+          body: new URLSearchParams({
+            target: WA_NUMBER,
+            message: `🔔 *Ucapan Baru - Idul Fitri 1447H*\n\n👤 *${name}*\n💬 ${text}\n🕐 ${time}`
+          })
+        }).catch(() => {});
+      }
+    };
+
+    function escHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+  </script>
+
   <script>
-    const KEY = 'idul_fitri_1447_comments';
+    const KEY = 'idul_fitri_1447_comments'; // tidak dipakai lagi, diganti Firebase
 
     // Generate flags
     const flagRow = document.getElementById('flagRow');
@@ -473,63 +560,11 @@
     function toggleComment() {
       const box = document.getElementById('commentBox');
       box.classList.toggle('open');
-      if (box.classList.contains('open')) renderComments();
     }
 
     function useTemplate(text) {
       document.getElementById('inputComment').value = text;
       document.getElementById('inputComment').focus();
-    }
-
-    function getComments() {
-      try { return JSON.parse(localStorage.getItem(KEY)) || []; }
-      catch(e) { return []; }
-    }
-
-    function saveComments(list) {
-      localStorage.setItem(KEY, JSON.stringify(list));
-    }
-
-    function submitComment() {
-      const name = document.getElementById('inputName').value.trim();
-      const text = document.getElementById('inputComment').value.trim();
-      if (!name) { alert('Masukkan nama kamu dulu ya 😊'); return; }
-      if (!text) { alert('Tulis ucapan atau komentar dulu ya 🌙'); return; }
-      const comments = getComments();
-      comments.unshift({
-        name,
-        text,
-        time: new Date().toLocaleString('id-ID', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
-      });
-      saveComments(comments);
-      document.getElementById('inputName').value = '';
-      document.getElementById('inputComment').value = '';
-      renderComments();
-    }
-
-    function renderComments() {
-      const list = document.getElementById('commentList');
-      const noComment = document.getElementById('noComment');
-      const comments = getComments();
-      const existing = list.querySelectorAll('.comment-item');
-      existing.forEach(el => el.remove());
-      if (comments.length === 0) {
-        noComment.style.display = 'block';
-        return;
-      }
-      noComment.style.display = 'none';
-      comments.forEach(c => {
-        const div = document.createElement('div');
-        div.className = 'comment-item';
-        div.innerHTML = `
-          <div>
-            <span class="c-name">${escHtml(c.name)}</span>
-            <span class="c-time">${escHtml(c.time)}</span>
-          </div>
-          <div class="c-text">${escHtml(c.text)}</div>
-        `;
-        list.appendChild(div);
-      });
     }
 
     function escHtml(str) {
